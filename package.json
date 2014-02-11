@@ -1,6 +1,6 @@
 {
   "name": "csv2couchbase",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Import CSV files in Couchbase",
   "bin": "./bin/csv2couchbase.js",
   "author": {
