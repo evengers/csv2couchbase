@@ -1,0 +1,29 @@
+{
+  "name": "csv2couchbase",
+  "version": "0.1.0",
+  "description": "Import CSV files in Couchbase",
+  "bin": "./bin/csv2couchbase.js",
+  "author": {
+    "name": "Den Gladkikh",
+    "email": "outcoldman@gmail.com",
+    "url": "http://outcoldman.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/outcoldman/csv2couchbase"
+  },
+  "keywords": [
+    "cli",
+    "csv",
+    "couchbase",
+    "csv2couchbase",
+    "csv2cb"
+  ],
+  "dependencies": {
+    "nopt": "~2.1.2",
+    "couchbase": "~1.2.1",
+    "csv": "~0.3.7",
+    "underscore": "~1.6.0"
+  }
+}
