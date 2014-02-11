@@ -16,10 +16,12 @@ var parsed = nopt(
       'queryhosts': [String, Array],
       'csv': path,
       'columns': [String],
+      'autocolumns': [Boolean],
       'pick': [String, Array],
       'omit': [String, Array],
       'stream': [Boolean, false],
-      'doctype': [String]
+      'doctype': [String],
+      'simulate': [Boolean]
     }
   );
 
@@ -32,11 +34,7 @@ var bucket = new couchbase.Connection({
 
 var data = {}, columns = parsed.columns ? parsed.columns.split(',') : null;
 
-function constructObject(row) {
-  var val = row;
-  if (columns) {
-    val = _.object(columns, val);
-  }
+function constructObject(val) {
   if (parsed.pick) {
     val = _.pick.apply(_, _.union([val], parsed.pick));
   }
@@ -65,20 +63,33 @@ function errorHandler(err, result) {
   }
 }
 
+function printValue(key, obj) {
+  console.log('Simulate: Key=' + key + ', Value=' + JSON.stringify(obj));
+}
+
 // Loading CSV
 var csvStream = csv()
-.from.path(parsed.csv)
-.transform(function(row, index, cb) {
-   var key = constructKey(index);
-  var obj = constructObject(row);
+.from.path(
+  parsed.csv, 
+  { 
+    columns: parsed.autocolumns || columns || null
+  })
+.transform(function(obj, index, cb) {
+  var key = constructKey(index);
+  var obj = constructObject(obj);
   if (!parsed.stream) {
     data[key] = { value: obj };
-    cb(null, row);
+    cb(null, obj);
   } else {
-    bucket.set(key, obj, function(err, result) {
-      errorHandler(err);
-      cb(null, row);
-    });
+    if (parsed.simulate) {
+      printValue(key, obj);
+      cb(null, obj);
+    } else {
+      bucket.set(key, obj, function(err, result) {
+        errorHandler(err);
+        cb(null, obj);
+      });
+    }
   }
 })
 .on('end', function(count){
@@ -88,10 +99,17 @@ var csvStream = csv()
   }
 
   if (!parsed.stream) {
-    bucket.addMulti(data, {}, function(err, results) {
-      errorHandler(err);
+    if (parsed.simulate) {
+      _(data).each(function(obj, key) {
+        printValue(key, obj);
+      });
       reportSuccess();
-    });
+    } else {
+      bucket.addMulti(data, {}, function(err, results) {
+        errorHandler(err);
+        reportSuccess();
+      });
+    }
   } else {
     reportSuccess();
   }
