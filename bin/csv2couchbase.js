@@ -19,20 +19,45 @@ var parsed = nopt(
       'autocolumns': [Boolean],
       'pick': [String, Array],
       'omit': [String, Array],
-      'stream': [Boolean, false],
+      'chunksize': [Number],
       'doctype': [String],
-      'simulate': [Boolean]
+      'simulate': [Boolean],
+      'help': [Boolean]
     }
   );
 
-var bucket = new couchbase.Connection({
+if (!parsed.csv || parsed.help) {
+  console.log(
+    'Import CSV files in Couchbase\n' +
+    '\n' +
+    'Usage:\n' +
+    '\tcsv2couchbase --csv path/to/csv\n' +
+    '\t\t[--host hostname]\n' +
+    '\t\t[--password password]\n' +
+    '\t\t[--bucket bucket]\n' +
+    '\t\t[--queryhost queryhost]\n' +
+    '\t\t[--columns "col1,col2,col3"]\n' +
+    '\t\t[--autocolumns]\n' +
+    '\t\t[--pick "col1,col3"]\n' +
+    '\t\t[--omit "col2"]\n' +
+    '\t\t[--chunksize 1000]\n' +
+    '\t\t[--doctype doctype]\n' +
+    '\t\t[--simulate]');
+  process.exit(1);
+}
+
+var bucket = parsed.simulate ? null : new couchbase.Connection({
   host: parsed.host,
   password: parsed.password,
   bucket: parsed.bucket,
   queryhosts: parsed.queryhosts
 });
 
-var data = {}, columns = parsed.columns ? parsed.columns.split(',') : null;
+var data = {}, 
+    currentSize = 0,
+    chunkSize = parsed.chunksize || 1000,
+    all = 0,
+    columns = parsed.columns ? parsed.columns.split(',') : null;
 
 function constructObject(val) {
   if (parsed.pick) {
@@ -42,7 +67,7 @@ function constructObject(val) {
     val = _.omit.apply(_, _.union([val], parsed.omit));
   }
   if (parsed.doctype) {
-    val['doctype'] = parsed.doctype;
+    val.doctype = parsed.doctype;
   }
   return val;
 }
@@ -67,6 +92,18 @@ function printValue(key, obj) {
   console.log('Simulate: Key=' + key + ', Value=' + JSON.stringify(obj));
 }
 
+function flushChunk(cb) {
+  var chunk = data;
+  data = {};
+  all += currentSize;
+  currentSize = 0;
+  bucket.addMulti(chunk, {}, function(err, results) {
+    errorHandler(err);
+    console.log('Imported ' + all + ' rows');
+    cb();
+  });
+}
+
 // Loading CSV
 var csvStream = csv()
 .from.path(
@@ -76,19 +113,20 @@ var csvStream = csv()
   })
 .transform(function(obj, index, cb) {
   var key = constructKey(index);
-  var obj = constructObject(obj);
-  if (!parsed.stream) {
-    data[key] = { value: obj };
+  var value = constructObject(obj);
+
+  if (parsed.simulate) {
+    printValue(key, obj);
     cb(null, obj);
   } else {
-    if (parsed.simulate) {
-      printValue(key, obj);
-      cb(null, obj);
-    } else {
-      bucket.set(key, obj, function(err, result) {
-        errorHandler(err);
+    data[key] = { value: value };
+    currentSize++;
+    if (currentSize >= chunkSize) {
+      flushChunk(function() {
         cb(null, obj);
       });
+    } else {
+      cb(null, obj);
     }
   }
 })
@@ -98,18 +136,8 @@ var csvStream = csv()
     process.exit(0);
   }
 
-  if (!parsed.stream) {
-    if (parsed.simulate) {
-      _(data).each(function(obj, key) {
-        printValue(key, obj);
-      });
-      reportSuccess();
-    } else {
-      bucket.addMulti(data, {}, function(err, results) {
-        errorHandler(err);
-        reportSuccess();
-      });
-    }
+  if (currentSize > 0 && !parsed.simulate) {
+    flushChunk(reportSuccess);
   } else {
     reportSuccess();
   }

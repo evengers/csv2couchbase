@@ -21,7 +21,7 @@ csv2couchbase --csv path/to/csv
               [--autocolumns]
               [--pick "col1,col3"]
               [--omit "col2"]
-              [--stream]
+              [--chunksize 1000]
               [--doctype doctype]
               [--simulate]
 ```
@@ -34,7 +34,7 @@ csv2couchbase --csv path/to/csv
 * `--autocolumns` - set this flag is columns can be autodiscovered in the first CSV line.
 * `--pick "col1,col3"` - specify which columns you want to include.
 * `--omit "col2"` - other way of omitting columns which you don't want to import.
-* `--stream` - specify if you want to import everything row by row with `set`. Without this options everything will be imported at the end with `addMulti`.
+* `--chunksize` - default chunk size is 1000, script uses `addMulti` to import data by chunks.
 * `--doctype` - specify `doctype` property for each object. Also this value will be used to construct id for rows `{doctype}_{index}`.
 * `--simulate` - don't import anything to Couchbase, just simulate reading and print output to console.
 
