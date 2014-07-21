@@ -4,6 +4,10 @@
 
 Don't expect to much from this library. If you wish to see any other features - feel free to fork / contribute and push.
 
+
+(Evengers) Note: this seems to work fine with Node 0.10.28  it chokes on 0.11.13
+
+
 ## Installation
 
 1. Install [node.js](http://nodejs.org/).
