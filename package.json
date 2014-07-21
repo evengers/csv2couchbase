@@ -22,7 +22,7 @@
   ],
   "dependencies": {
     "nopt": "~2.1.2",
-    "couchbase": "~1.2.1",
+    "couchbase": "^2.0.0-dp1",
     "csv": "~0.3.7",
     "underscore": "~1.6.0"
   }
